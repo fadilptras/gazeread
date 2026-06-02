@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GazeRead — Assistive E-Book Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #f5f0e8;
+  --surface:     #faf7f2;
+  --surface2:    #f0ebe0;
+  --border:      rgba(100,80,40,0.12);
+  --border-md:   rgba(100,80,40,0.22);
+  --text:        #1c1510;
+  --text-muted:  #7a6a50;
+  --text-light:  #b0a090;
+  --accent:      #8b4513;
+  --accent-light:#c47a3a;
+  --accent-bg:   rgba(139,69,19,0.07);
+  --green:       #2d7a3a;
+  --red:         #c0392b;
+  --blue:        #1a5276;
+  --progress:    #8b4513;
+  --shadow:      rgba(60,40,10,0.10);
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── HEADER ─────────────────────────────────── */
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 54px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-md);
+  box-shadow: 0 1px 8px var(--shadow);
+  flex-shrink: 0;
+  gap: 16px;
+  z-index: 10;
+}
+
+#logo {
+  font-family: 'Lora', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#logo em {
+  font-style: normal;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+  margin-left: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#topbar-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border-md);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: all .25s;
+}
+
+.pill .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-light);
+  transition: background .3s;
+  flex-shrink: 0;
+}
+
+.pill.active { color: var(--green); border-color: rgba(45,122,58,.3); background: rgba(45,122,58,.06); }
+.pill.active .dot { background: var(--green); box-shadow: 0 0 5px var(--green); }
+
+#action-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  min-width: 180px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity .3s;
+  white-space: nowrap;
+}
+#action-label.show { opacity: 1; }
+
+#topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.hdr-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border-md);
+  border-radius: 8px;
+  padding: 6px 14px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.hdr-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hdr-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hdr-btn.primary:hover { background: #6b3310; }
+
+/* ─── LAYOUT ─────────────────────────────────── */
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── SIDEBAR ────────────────────────────────── */
+#sidebar {
+  width: 210px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+#sidebar::-webkit-scrollbar { width: 3px; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 2px; }
+
+.sidebar-section { padding: 16px 16px 6px; }
+.sidebar-label {
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.book-card {
+  background: var(--accent-bg);
+  border: 1px solid rgba(139,69,19,.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.book-card .bc-title { font-family: 'Lora', serif; font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 2px; }
+.book-card .bc-author { font-size: 11px; color: var(--text-muted); font-style: italic; font-family: 'Lora', serif; }
+
+.chapter-item {
+  padding: 8px 16px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-left: 2.5px solid transparent;
+  transition: all .18s;
+  line-height: 1.4;
+}
+.chapter-item:hover { color: var(--text); background: var(--surface2); }
+.chapter-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-bg); }
+.chapter-item .ch-num { font-size: 9.5px; color: var(--text-light); display: block; margin-bottom: 2px; letter-spacing: .04em; }
+
+.sidebar-divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+/* ─── READER ─────────────────────────────────── */
+#reader-wrap {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--bg);
+}
+
+#reader {
+  flex: 1;
+  overflow-y: auto;
+  padding: 48px 60px;
+  scroll-behavior: smooth;
+}
+#reader::-webkit-scrollbar { width: 5px; }
+#reader::-webkit-scrollbar-track { background: transparent; }
+#reader::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+
+#book-content { max-width: 620px; margin: 0 auto; }
+
+.book-title {
+  font-family: 'Lora', serif;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+.book-author {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 36px;
+}
+
+.book-divider {
+  width: 60px;
+  height: 2px;
+  background: var(--accent);
+  margin: 0 0 36px;
+  border-radius: 1px;
+  opacity: .5;
+}
+
+.chapter-title {
+  font-family: 'Lora', serif;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 52px 0 22px;
+  padding-top: 36px;
+  border-top: 1px solid var(--border-md);
+  scroll-margin-top: 24px;
+}
+.chapter-title:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+
+p {
+  font-family: 'Lora', serif;
+  font-size: 16.5px;
+  line-height: 1.9;
+  color: #2c2016;
+  margin-bottom: 20px;
+}
+
+/* ─── DWELL BAR ──────────────────────────────── */
+#dwell-wrap {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 38px;
+  background: rgba(245,240,232,.97);
+  border-top: 1px solid var(--border-md);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+#dwell-wrap.show { opacity: 1; pointer-events: auto; }
+#dwell-label { font-size: 11.5px; color: var(--text-muted); min-width: 140px; font-weight: 500; }
+#dwell-track { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; border: 1px solid var(--border); }
+#dwell-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 2px; transition: width .08s linear; }
+#dwell-pct { font-size: 11.5px; color: var(--accent); font-weight: 500; min-width: 34px; text-align: right; }
+
+/* ─── ACTION FLASH ───────────────────────────── */
+#action-flash {
+  position: absolute;
+  top: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--accent-light);
+  border-radius: 24px;
+  padding: 7px 22px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  z-index: 50;
+  opacity: 0;
+  transition: opacity .25s;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 16px var(--shadow);
+}
+#action-flash.show { opacity: 1; }
+
+/* ─── CAM PANEL ──────────────────────────────── */
+#cam-panel {
+  width: 256px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 16px;
+  gap: 12px;
+}
+#cam-panel::-webkit-scrollbar { width: 3px; }
+#cam-panel::-webkit-scrollbar-thumb { background: var(--border-md); }
+
+.panel-label {
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+/* VIDEO */
+#video-container {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-md);
+  background: #1a1510;
+  aspect-ratio: 4/3;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+#webcam { width: 100%; height: 100%; object-fit: cover; display: block; transform: scaleX(-1); }
+#overlay-canvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  transform: scaleX(-1);
+}
+#loading-overlay {
+  position: absolute; inset: 0;
+  background: rgba(26,21,16,.9);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; border-radius: 10px; z-index: 10;
+}
+#loading-overlay.hidden { display: none; }
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid rgba(255,255,255,.15);
+  border-top-color: var(--accent-light);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-text { font-size: 12px; color: rgba(255,255,255,.5); text-align: center; padding: 0 12px; }
+
+#cam-off-state {
+  aspect-ratio: 4/3;
+  background: var(--surface2);
+  border: 1px solid var(--border-md);
+  border-radius: 10px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-light);
+  font-size: 12px;
+  text-align: center;
+  padding: 16px;
+}
+#cam-off-state.show { display: flex; }
+#video-container.hidden { display: none; }
+
+/* METRICS */
+.metric-row { display: flex; gap: 8px; }
+.metric-box {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  text-align: center;
+}
+.metric-lbl { font-size: 10px; color: var(--text-light); margin-bottom: 3px; }
+.metric-val { font-size: 16px; font-weight: 500; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+/* GAZE PAD */
+#gaze-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+#gaze-box .panel-label { margin-bottom: 8px; display: block; }
+#gaze-pad {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--bg);
+  border-radius: 6px;
+  border: 1px solid var(--border-md);
+  position: relative;
+  overflow: hidden;
+}
+/* zone indicators */
+#gaze-pad::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(139,69,19,.04) 38%, transparent 38% 62%, rgba(139,69,19,.04) 62%),
+    linear-gradient(to right, rgba(139,69,19,.04) 40%, transparent 40% 60%, rgba(139,69,19,.04) 60%);
+}
+#gaze-dot {
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transition: left .1s ease-out, top .1s ease-out;
+  box-shadow: 0 0 8px rgba(139,69,19,.5);
+  left: 50%; top: 50%;
+  z-index: 2;
+}
+
+/* INTENT */
+#intent-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#intent-icon { font-size: 20px; }
+#intent-name { font-size: 12.5px; font-weight: 500; color: var(--text); }
+#intent-sub { font-size: 10.5px; color: var(--text-muted); margin-top: 1px; }
+
+/* CONTROLS GUIDE */
+#guide-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+#guide-box .panel-label { display: block; margin-bottom: 8px; }
+.guide-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 11px;
+}
+.guide-key {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: var(--accent);
+  min-width: 72px;
+  text-align: center;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.guide-desc { color: var(--text-muted); }
+
+/* READ PROGRESS */
+#read-progress {
+  height: 3px;
+  background: var(--border);
+  position: relative;
+  overflow: hidden;
+  border-radius: 0;
+}
+#read-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width .3s;
+}
+
+/* FONT SIZE CONTROL */
+#font-ctrl {
+  display: flex; align-items: center; gap: 8px;
+}
+#font-ctrl .panel-label { flex: 1; }
+.fs-btn {
+  width: 26px; height: 26px;
+  background: var(--surface2);
+  border: 1px solid var(--border-md);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--accent);
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.fs-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+#fs-val { font-size: 11.5px; font-weight: 500; color: var(--text-muted); min-width: 22px; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- READ PROGRESS BAR -->
+<div id="read-progress"><div id="read-fill"></div></div>
+
+<!-- HEADER -->
+<div id="header">
+  <div id="logo">GazeRead <em>Assistive Reader</em></div>
+
+  <div id="topbar-center">
+    <div class="pill" id="pill-face"><div class="dot"></div><span>Wajah</span></div>
+    <div class="pill" id="pill-iris"><div class="dot"></div><span>Iris</span></div>
+    <div id="action-label"></div>
+  </div>
+
+  <div id="topbar-right">
+    <button class="hdr-btn" id="toggle-cam">📷 Aktifkan Kamera</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Buku Aktif</div>
+      <div class="book-card">
+        <div class="bc-title">Jejak di Antara Bintang</div>
+        <div class="bc-author">Anindita Rahayu Wulandari</div>
+      </div>
+      <div class="sidebar-label">Daftar Isi</div>
+    </div>
+
+    <div class="chapter-item active" data-ch="0">
+      <span class="ch-num">Bab I</span>Keheningan Sebelum Fajar
+    </div>
+    <div class="chapter-item" data-ch="1">
+      <span class="ch-num">Bab II</span>Tanah yang Bernyawa
+    </div>
+    <div class="chapter-item" data-ch="2">
+      <span class="ch-num">Bab III</span>Sungai di Antara Kita
+    </div>
+    <div class="chapter-item" data-ch="3">
+      <span class="ch-num">Bab IV</span>Warisan Debu dan Cahaya
+    </div>
+    <div class="chapter-item" data-ch="4">
+      <span class="ch-num">Bab V</span>Pulang
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Tentang</div>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.6;padding:0 0 12px;">
+        GazeRead menggunakan pelacak mata berbasis MediaPipe FaceMesh untuk navigasi tanpa tangan — dirancang untuk aksesibilitas disabilitas motorik.
+      </div>
+    </div>
+  </div>
+
+  <!-- READER -->
+  <div id="reader-wrap">
+    <div id="action-flash"></div>
+
+    <div id="reader">
+      <div id="book-content">
+        <div class="book-title">Jejak di Antara Bintang</div>
+        <div class="book-author">oleh Anindita Rahayu Wulandari</div>
+        <div class="book-divider"></div>
+
+        <div class="chapter-title" id="ch-0">Bab I — Keheningan Sebelum Fajar</div>
+        <p>Ada sesuatu yang berbeda pada subuh itu. Langit di atas Desa Lemahbang masih berwarna hitam pekat ketika Nara membuka matanya, namun ia tahu — ia benar-benar tahu — bahwa hari ini bukan hari biasa. Angin bertiup lebih dingin dari biasanya, dan di kejauhan, seekor burung hantu mengeluarkan bunyi yang terasa seperti peringatan.</p>
+        <p>Nara bangkit dari kasurnya yang tipis, berhati-hati agar tidak membangunkan adiknya yang tidur di sebelah. Sendi-sendinya berbunyi pelan ketika ia meregangkan tubuh — akibat dari bertahun-tahun bekerja di ladang sejak matahari belum terbit. Namun ia tidak pernah mengeluh. Keluhan, kata neneknya dulu, hanyalah doa yang salah alamat.</p>
+        <p>Di dapur, ibunya sudah menyalakan kompor. Asap tipis mengepul dari panci berisi jagung rebus, dan aroma itu — manis, hangat, seperti tanah basah setelah hujan — membawa Nara kembali ke masa kecilnya. Ke saat-saat ketika semuanya masih sederhana. Ketika yang dibutuhkan hanyalah semangkuk jagung dan tangan ibu yang hangat.</p>
+        <p>"Kamu mimpi apa semalam?" tanya ibunya tanpa menoleh, seolah bisa merasakan kehadiran Nara bahkan tanpa melihat.</p>
+        <p>"Mimpi sungai," jawab Nara pelan. "Sungai yang airnya mengalir ke atas."</p>
+        <p>Ibunya diam. Lalu, setelah jeda yang terasa terlalu panjang, berkata: "Itu pertanda perjalanan jauh."</p>
+        <p>Nara menatap uap yang menari-nari di atas panci. Perjalanan jauh. Kata-kata itu terasa seperti kunci yang baru saja menemukan lubangnya — menyakitkan, namun juga, dengan cara yang aneh, membebaskan.</p>
+
+        <div class="chapter-title" id="ch-1">Bab II — Tanah yang Bernyawa</div>
+        <p>Ladang keluarga Nara bukan sekadar tanah. Ia adalah sesuatu yang lebih tua dari nama-nama yang terukir di batu nisan para leluhur mereka — ia adalah memori itu sendiri, yang tersimpan di dalam butir-butir tanah liat merah yang menempel di telapak kaki setiap pagi. Kakek Nara pernah berkata bahwa tanah bisa mendengar. Bahwa jika kamu berdiri cukup lama di atasnya dengan kaki telanjang, kamu bisa mendengar bisikan orang-orang yang pernah mengolahnya sebelum kamu.</p>
+        <p>Nara percaya itu. Sejak kecil, ia sering berdiri di tengah ladang saat sore, membiarkan angin menyibak rambutnya, dan mencoba mendengarkan. Kadang ia mendengar sesuatu — bukan suara yang jelas, tapi semacam gema yang terasa seperti miliknya sendiri, namun berasal dari tempat yang jauh.</p>
+        <p>Pagi itu, ketika cangkul pertama menyentuh tanah, Nara merasa ada yang berbeda. Tanah terasa lebih keras. Lebih resisten. Seolah ia sedang mencoba menyampaikan sesuatu yang belum siap didengar. Nara berhenti sejenak, berdiri tegak, dan menutup matanya.</p>
+        <p>Dalam kegelapan di balik kelopak matanya, ia melihat bayangan — bukan mimpi, tapi ingatan dari sesuatu yang belum pernah terjadi. Sebuah kota. Gedung-gedung tinggi yang ujungnya menyentuh awan. Suara klakson yang bersahutan. Dan di tengah semua itu, wajahnya sendiri — lebih tua, lebih lelah, namun dengan senyum yang terasa seperti baru pertama kali tumbuh.</p>
+
+        <div class="chapter-title" id="ch-2">Bab III — Sungai di Antara Kita</div>
+        <p>Sungai Ciawi selalu menjadi batas tak kasat mata antara dua dunia. Di sisi barat, desa tempat Nara tumbuh — dengan rumah-rumah kayu, pasar minggu, dan pohon beringin tua yang telah menjadi saksi bisu tiga generasi. Di sisi timur, kehidupan lain. Kehidupan yang selama ini hanya ia kenal dari cerita-cerita yang beredar di kedai kopi bapaknya.</p>
+        <p>Nara berdiri di tepi sungai, menatap air yang berkilat-kilat memantulkan cahaya matahari yang baru saja muncul di cakrawala. Seekor capung hinggap di ujung jarinya, lalu terbang lagi. Sesaat saja. Seperti pengingat bahwa segala sesuatu hanya singgah, tidak pernah benar-benar tinggal.</p>
+        <p>Di seberang, seorang anak laki-laki melempar batu pipih ke permukaan sungai. Tiga, empat kali loncat, sebelum akhirnya tenggelam. Anak itu mendongak, menatap Nara dengan mata yang seperti tahu terlalu banyak untuk usianya yang mungkin baru sepuluh tahun.</p>
+        <p>"Kamu mau nyeberang?" tanya anak itu, suaranya terdengar aneh — terlalu jernih, terlalu jelas, melewati deras aliran sungai yang sesungguhnya tidak mungkin tertembus kata-kata sepelan itu.</p>
+        <p>Nara tidak menjawab. Tapi kakinya bergerak sendiri ke arah jembatan bambu tua yang ada dua ratus meter ke hulu — yang selama hidupnya tak pernah sekali pun ia seberangi.</p>
+
+        <div class="chapter-title" id="ch-3">Bab IV — Warisan Debu dan Cahaya</div>
+        <p>Surat itu tiba tanpa perangko. Tergeletak begitu saja di ambang pintu ketika Nara pulang dari pasar, seolah telah ditaruh oleh seseorang yang sengaja menghindari pertemuan. Amplop cokelat tua yang ujung-ujungnya sudah lusuh, dengan tulisan tangan yang tak dikenal — rapi namun terasa terburu-buru, seperti pikiran yang mencoba mengejar kata-kata yang terus berlari.</p>
+        <p>Di dalamnya, hanya selembar kertas. Delapan baris yang mengubah segalanya. Bukan karena isinya yang dramatis — justru sebaliknya. Kalimat-kalimatnya sederhana, hampir prosaik. Tapi ada sesuatu di balik kata-kata itu, semacam lapisan makna yang baru terasa ketika kamu membacanya untuk ketiga kalinya di bawah cahaya lampu yang mulai redup.</p>
+        <p>Nara duduk di lantai dapur. Membaca. Membaca lagi. Dan untuk pertama kalinya dalam bertahun-tahun, ia menangis — bukan karena sedih, tapi karena akhirnya mengerti sesuatu yang selama ini hanya ia rasakan tanpa nama.</p>
+        <p>Warisan, tulisan itu berkata, bukan hanya soal apa yang kamu terima. Ia adalah soal apa yang kamu pilih untuk diteruskan. Dan pilihan itu — selalu, selalu — milikmu sendiri.</p>
+
+        <div class="chapter-title" id="ch-4">Bab V — Pulang</div>
+        <p>Pulang bukan selalu soal tempat. Nara belajar itu dari perjalanannya — dari jalan tanah yang berubah menjadi aspal, dari wajah-wajah yang ia kenal namun terasa asing karena dilapisi waktu, dari bau tanah ladang yang ternyata masih sama persis meski ia sudah lama pergi.</p>
+        <p>Ketika mobilnya berhenti di depan rumah kayu itu, untuk sedetik Nara tidak bergerak. Hanya duduk, memandang fasad yang catnya sudah mengelupas di beberapa sudut, pohon mangga di samping yang kini sudah lebih tinggi dari atap, dan di beranda — ibunya, duduk di kursi rotan yang sama, mengupas kacang dengan gerakan tangan yang persis seperti dua puluh tahun lalu.</p>
+        <p>Nara turun dari mobil dengan langkah pelan. Angin bertiup dari arah utara, membawa aroma rerumputan basah dan asap kayu bakar. Ibunya mendongak. Mereka saling bertatapan. Dan dalam tatapan itu, tidak ada kata yang perlu diucapkan — karena semua percakapan yang tertunda selama bertahun-tahun itu sudah tersampaikan hanya dalam satu denyut waktu.</p>
+        <p>"Sudah lapar?" tanya ibunya akhirnya, seolah Nara baru saja pergi ke pasar sebentar.</p>
+        <p>Nara tersenyum. "Sudah, Bu. Sudah lama sekali."</p>
+        <p>Di langit, bintang-bintang mulai bermunculan — satu per satu, seperti kenangan yang pulang ke tempat semestinya. Nara menatap ke atas. Dan untuk pertama kalinya dalam waktu yang sangat lama, ia merasa tidak perlu pergi ke mana-mana lagi.</p>
+      </div>
+    </div>
+
+    <!-- DWELL BAR -->
+    <div id="dwell-wrap">
+      <div id="dwell-label">Memproses...</div>
+      <div id="dwell-track"><div id="dwell-fill"></div></div>
+      <div id="dwell-pct">0%</div>
+    </div>
+  </div>
+
+  <!-- CAM PANEL -->
+  <div id="cam-panel">
+    <div class="panel-label">Pelacak Mata</div>
+
+    <div id="video-container" class="hidden">
+      <video id="webcam" autoplay muted playsinline></video>
+      <canvas id="overlay-canvas"></canvas>
+      <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="load-text">Memuat MediaPipe FaceMesh...</div>
+      </div>
+    </div>
+
+    <div id="cam-off-state" class="show">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" style="opacity:.4">
+        <path d="M15 10l4.553-2.553A1 1 0 0121 8.382v7.236a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+        <line x1="3" y1="3" x2="21" y2="21" stroke="var(--red)" stroke-width="1.5"/>
+      </svg>
+      <span>Kamera nonaktif</span>
+      <span style="font-size:10.5px;opacity:.7">Klik "Aktifkan Kamera" untuk mulai gaze tracking</span>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-box">
+        <div class="metric-lbl">EAR Kiri</div>
+        <div class="metric-val" id="ear-l">—</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-lbl">EAR Kanan</div>
+        <div class="metric-val" id="ear-r">—</div>
+      </div>
+    </div>
+
+    <div id="gaze-box">
+      <span class="panel-label">Arah Tatapan</span>
+      <div id="gaze-pad"><div id="gaze-dot"></div></div>
+    </div>
+
+    <div id="intent-box">
+      <div id="intent-icon">👁️</div>
+      <div>
+        <div id="intent-name">STANDBY</div>
+        <div id="intent-sub">Kamera belum aktif</div>
+      </div>
+    </div>
+
+    <div id="font-ctrl">
+      <span class="panel-label">Ukuran Font</span>
+      <button class="fs-btn" id="fs-down">A-</button>
+      <span id="fs-val">16</span>
+      <button class="fs-btn" id="fs-up">A+</button>
+    </div>
+
+    <div id="guide-box">
+      <span class="panel-label">Panduan Kontrol</span>
+      <div class="guide-row"><div class="guide-key">Lirik Atas ↑</div><div class="guide-desc">Scroll ke atas</div></div>
+      <div class="guide-row"><div class="guide-key">Lirik Bawah ↓</div><div class="guide-desc">Scroll ke bawah</div></div>
+      <div class="guide-row"><div class="guide-key">Lirik Kiri ←</div><div class="guide-desc">Bab sebelumnya</div></div>
+      <div class="guide-row"><div class="guide-key">Lirik Kanan →</div><div class="guide-desc">Bab berikutnya</div></div>
+      <div class="guide-row"><div class="guide-key">Kedip Kiri</div><div class="guide-desc">Klik / Enter</div></div>
+      <div class="guide-row"><div class="guide-key">Kedip Kanan</div><div class="guide-desc">Kembali</div></div>
+      <div class="guide-row"><div class="guide-key">Kedua Mata</div><div class="guide-desc">Tutup aplikasi</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// PORTING test.py — AssistiveGazeTracker
+// ═══════════════════════════════════════════════════════════
+
+// Landmark indices — identik dengan test.py
+const LM = {
+  L_TOP:159, L_BOT:145, L_LC:33,  L_RC:133, L_IRIS:468, L_EDGES:[469,470,471,472],
+  R_TOP:386, R_BOT:374, R_LC:362, R_RC:263, R_IRIS:473, R_EDGES:[474,475,476,477]
+};
+
+// EAR threshold — identik test.py
+const EAR_TUTUP = 0.16;
+const EAR_BUKA  = 0.20;
+
+// Buffer smoothing size=5
+const BUF = { earL:[], earR:[], gx:[], gy:[] };
+const BUF_SIZE = 5;
+
+function pushBuf(arr, v) { arr.push(v); if (arr.length > BUF_SIZE) arr.shift(); }
+function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function dist2d(a,b) { return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2); }
+
+// _ekstrak_metrik() dari test.py
+function ekstrakMetrik(lm) {
+  const lw = dist2d(lm[LM.L_LC], lm[LM.L_RC]);
+  const lh = dist2d(lm[LM.L_TOP], lm[LM.L_BOT]);
+  const rw = dist2d(lm[LM.R_LC], lm[LM.R_RC]);
+  const rh = dist2d(lm[LM.R_TOP], lm[LM.R_BOT]);
+
+  const earL = lw > 0 ? lh/lw : 0;
+  const earR = rw > 0 ? rh/rw : 0;
+
+  let gx=0.5, gy=0.5;
+  if (lw>0 && rw>0) {
+    gx = (dist2d(lm[LM.L_LC],lm[LM.L_IRIS])/lw + dist2d(lm[LM.R_LC],lm[LM.R_IRIS])/rw) / 2;
+  }
+  if (lh>0 && rh>0) {
+    gy = (dist2d(lm[LM.L_TOP],lm[LM.L_IRIS])/lh + dist2d(lm[LM.R_TOP],lm[LM.R_IRIS])/rh) / 2;
+  }
+  return { earL, earR, gx, gy };
+}
+
+// _tentukan_intensi() dari test.py — threshold identik
+function tentukanIntensi(earL, earR, gx, gy) {
+  if (earL < EAR_TUTUP && earR < EAR_TUTUP) return { name:'TERTUTUP_PENUH', dwell:2.0 };
+  if (earL < EAR_TUTUP && earR > EAR_BUKA)  return { name:'KEDIP_KIRI',      dwell:0.8 };
+  if (earR < EAR_TUTUP && earL > EAR_BUKA)  return { name:'KEDIP_KANAN',     dwell:0.8 };
+  if (gy < 0.38)  return { name:'ATAS',  dwell:1.2 };
+  if (gy > 0.65)  return { name:'BAWAH', dwell:1.2 };
+  if (gx < 0.40)  return { name:'KANAN', dwell:1.2 };
+  if (gx > 0.60)  return { name:'KIRI',  dwell:1.2 };
+  return { name:'STANDBY', dwell:0 };
+}
+
+const INTENSI_INFO = {
+  STANDBY:        { label:'STANDBY',        sub:'Menunggu isyarat...',  icon:'👁️' },
+  TERTUTUP_PENUH: { label:'TERTUTUP PENUH', sub:'Tahan 2 detik',        icon:'😑' },
+  KEDIP_KIRI:     { label:'KEDIP KIRI',     sub:'Tahan 0.8 detik',      icon:'😉' },
+  KEDIP_KANAN:    { label:'KEDIP KANAN',    sub:'Tahan 0.8 detik',      icon:'😉' },
+  ATAS:           { label:'LIRIK ATAS',     sub:'Tahan 1.2 detik',      icon:'⬆️' },
+  BAWAH:          { label:'LIRIK BAWAH',    sub:'Tahan 1.2 detik',      icon:'⬇️' },
+  KIRI:           { label:'LIRIK KIRI',     sub:'Tahan 1.2 detik',      icon:'⬅️' },
+  KANAN:          { label:'LIRIK KANAN',    sub:'Tahan 1.2 detik',      icon:'➡️' }
+};
+
+// ═══════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════
+let currentState = 'STANDBY';
+let stateStart = 0;
+let targetDwell = 0;
+let camActive = false;
+let currentChapter = 0;
+let fontSize = 16;
+
+const chapters = ['ch-0','ch-1','ch-2','ch-3','ch-4'];
+const chapNames = ['Bab I','Bab II','Bab III','Bab IV','Bab V'];
+
+// ═══════════════════════════════════════════════════════════
+// DOM
+// ═══════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const video   = $('webcam');
+const canvas  = $('overlay-canvas');
+const ctx     = canvas.getContext('2d');
+const reader  = $('reader');
+
+// ═══════════════════════════════════════════════════════════
+// IRIS RENDERING — _gambar_detail_mata() dari test.py
+// ═══════════════════════════════════════════════════════════
+function renderIris(lm) {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  [[LM.L_IRIS, LM.L_EDGES],[LM.R_IRIS, LM.R_EDGES]].forEach(([ci, edges]) => {
+    // Polygon iris (hijau) — cv2.polylines
+    const pts = edges.map(i => [lm[i].x*w, lm[i].y*h]);
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    pts.slice(1).forEach(p => ctx.lineTo(p[0], p[1]));
+    ctx.closePath();
+    ctx.strokeStyle = '#2d7a3a';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Crosshair merah — cv2.drawMarker MARKER_CROSS
+    const cx = lm[ci].x*w, cy = lm[ci].y*h;
+    const sz = 7;
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx-sz,cy); ctx.lineTo(cx+sz,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy-sz); ctx.lineTo(cx,cy+sz); ctx.stroke();
+
+    // Titik tengah kuning — cv2.circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2, 0, Math.PI*2);
+    ctx.fillStyle = '#f5c842';
+    ctx.fill();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// AKSI — _eksekusi_aksi() dari test.py
+// ═══════════════════════════════════════════════════════════
+function showFlash(msg) {
+  const fl = $('action-flash');
+  fl.textContent = msg;
+  fl.classList.add('show');
+  const al = $('action-label');
+  al.textContent = msg;
+  al.classList.add('show');
+  clearTimeout(window._ft);
+  window._ft = setTimeout(() => {
+    fl.classList.remove('show');
+    al.classList.remove('show');
+  }, 2500);
+}
+
+function eksekusiAksi(name) {
+  const aksi = {
+    TERTUTUP_PENUH: () => showFlash('🚫 TUTUP APLIKASI'),
+    ATAS:           () => { reader.scrollBy({top:-220,behavior:'smooth'}); showFlash('↑ Scroll ke Atas'); },
+    BAWAH:          () => { reader.scrollBy({top:220,behavior:'smooth'}); showFlash('↓ Scroll ke Bawah'); },
+    KIRI:  () => {
+      if (currentChapter > 0) { currentChapter--; goToChapter(currentChapter); showFlash('← ' + chapNames[currentChapter]); }
+      else showFlash('⚠ Sudah di bab pertama');
+    },
+    KANAN: () => {
+      if (currentChapter < chapters.length-1) { currentChapter++; goToChapter(currentChapter); showFlash('→ ' + chapNames[currentChapter]); }
+      else showFlash('⚠ Sudah di bab terakhir');
+    },
+    KEDIP_KIRI:  () => showFlash('🖱 KLIK / ENTER'),
+    KEDIP_KANAN: () => showFlash('↩ KEMBALI')
+  };
+  if (aksi[name]) aksi[name]();
+}
+
+function goToChapter(idx) {
+  const el = document.getElementById(chapters[idx]);
+  if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  document.querySelectorAll('.chapter-item').forEach((c,i) => c.classList.toggle('active', i===idx));
+}
+
+document.querySelectorAll('.chapter-item').forEach((c,i) => {
+  c.addEventListener('click', () => { currentChapter = i; goToChapter(i); });
+});
+
+// Read progress
+reader.addEventListener('scroll', () => {
+  const pct = reader.scrollTop / (reader.scrollHeight - reader.clientHeight);
+  $('read-fill').style.width = (Math.min(pct,1)*100).toFixed(1)+'%';
+});
+
+// Font size
+let fs = 16;
+$('fs-up').addEventListener('click', () => { fs = Math.min(fs+1,24); applyFont(); });
+$('fs-down').addEventListener('click', () => { fs = Math.max(fs-1,12); applyFont(); });
+function applyFont() {
+  $('fs-val').textContent = fs;
+  document.querySelectorAll('#book-content p, #book-content .chapter-title, #book-content .book-title').forEach(el => {
+    if (el.classList.contains('book-title')) el.style.fontSize = (fs+14)+'px';
+    else if (el.classList.contains('chapter-title')) el.style.fontSize = (fs+3)+'px';
+    else el.style.fontSize = fs+'px';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// MEDIAPIPE + MAIN LOOP
+// ═══════════════════════════════════════════════════════════
+let faceMesh = null;
+let mpCamera = null;
+
+function onResults(results) {
+  const hasFace = results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0;
+  $('pill-face').classList.toggle('active', hasFace);
+  $('pill-iris').classList.toggle('active', hasFace);
+
+  if (!hasFace) {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    $('ear-l').textContent = '—';
+    $('ear-r').textContent = '—';
+    $('gaze-dot').style.left = '50%';
+    $('gaze-dot').style.top  = '50%';
+    updateIntentUI('STANDBY');
+    $('dwell-wrap').classList.remove('show');
+    return;
+  }
+
+  const lm = results.multiFaceLandmarks[0];
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  renderIris(lm);
+
+  // Ekstrak + buffer (deque dari test.py)
+  const m = ekstrakMetrik(lm);
+  pushBuf(BUF.earL, m.earL);
+  pushBuf(BUF.earR, m.earR);
+  pushBuf(BUF.gx,   m.gx);
+  pushBuf(BUF.gy,   m.gy);
+
+  $('ear-l').textContent = m.earL.toFixed(2);
+  $('ear-r').textContent = m.earR.toFixed(2);
+
+  // Gaze dot visualizer
+  const pad = $('gaze-pad');
+  $('gaze-dot').style.left = (Math.min(Math.max(m.gx,0),1)*pad.offsetWidth)+'px';
+  $('gaze-dot').style.top  = (Math.min(Math.max(m.gy,0),1)*pad.offsetHeight)+'px';
+
+  if (BUF.earL.length < BUF_SIZE) return;
+
+  const { name, dwell } = tentukanIntensi(avg(BUF.earL), avg(BUF.earR), avg(BUF.gx), avg(BUF.gy));
+  updateIntentUI(name);
+
+  // State machine dwell — proses_frame() dari test.py
+  const now = performance.now() / 1000;
+  if (name !== currentState) {
+    currentState = name;
+    targetDwell  = dwell;
+    stateStart   = now;
+    $('dwell-wrap').classList.remove('show');
+  } else if (currentState !== 'STANDBY') {
+    const elapsed  = now - stateStart;
+    const progress = Math.min(elapsed / targetDwell, 1.0);
+    $('dwell-wrap').classList.add('show');
+    $('dwell-fill').style.width = (progress*100).toFixed(1)+'%';
+    $('dwell-label').textContent = 'Memproses: ' + INTENSI_INFO[currentState].label;
+    $('dwell-pct').textContent   = Math.round(progress*100)+'%';
+
+    if (elapsed >= targetDwell) {
+      eksekusiAksi(currentState);
+      stateStart = now; // reset dwell
+    }
+  } else {
+    $('dwell-wrap').classList.remove('show');
+  }
+}
+
+function updateIntentUI(name) {
+  const info = INTENSI_INFO[name] || INTENSI_INFO.STANDBY;
+  $('intent-icon').textContent = info.icon;
+  $('intent-name').textContent = info.label;
+  $('intent-sub').textContent  = info.sub;
+}
+
+async function initMediaPipe() {
+  faceMesh = new FaceMesh({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+  });
+  faceMesh.setOptions({
+    maxNumFaces: 1, refineLandmarks: true,
+    minDetectionConfidence: 0.7, minTrackingConfidence: 0.7
+  });
+  faceMesh.onResults(onResults);
+
+  $('loading-overlay').querySelector('.load-text').textContent = 'Meminta akses kamera...';
+  const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:640,height:480}});
+  video.srcObject = stream;
+
+  mpCamera = new Camera(video, {
+    onFrame: async () => { if (faceMesh && camActive) await faceMesh.send({image:video}); },
+    width:640, height:480
+  });
+
+  $('loading-overlay').querySelector('.load-text').textContent = 'Menginisialisasi model...';
+  await mpCamera.start();
+  $('loading-overlay').classList.add('hidden');
+  camActive = true;
+}
+
+// Toggle camera
+$('toggle-cam').addEventListener('click', async () => {
+  if (!camActive) {
+    $('video-container').classList.remove('hidden');
+    $('cam-off-state').classList.remove('show');
+    $('loading-overlay').classList.remove('hidden');
+    try {
+      await initMediaPipe();
+      $('toggle-cam').textContent = '📷 Nonaktifkan';
+      $('intent-sub').textContent = 'Menunggu isyarat...';
+    } catch(e) {
+      $('loading-overlay').querySelector('.load-text').textContent = '⚠ ' + (e.message || 'Gagal');
+    }
+  } else {
+    camActive = false;
+    if (video.srcObject) { video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; }
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    $('video-container').classList.add('hidden');
+    $('cam-off-state').classList.add('show');
+    $('loading-overlay').classList.add('hidden');
+    $('toggle-cam').textContent = '📷 Aktifkan Kamera';
+    $('pill-face').classList.remove('active');
+    $('pill-iris').classList.remove('active');
+    $('ear-l').textContent = '—';
+    $('ear-r').textContent = '—';
+    $('dwell-wrap').classList.remove('show');
+    updateIntentUI('STANDBY');
+    $('intent-sub').textContent = 'Kamera belum aktif';
+    currentState = 'STANDBY';
+  }
+});
+</script>
+</body>
+</html>
